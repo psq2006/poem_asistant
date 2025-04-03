@@ -4,6 +4,7 @@ import { Visualizations } from './components/Visualizations';
 import { PoemList } from './components/PoemList';
 import { EmotionVisualization } from './components/EmotionVisualization';
 import { ImageryWordVisualizations } from './components/ImageryWordVisualizations';
+import { HelpSection } from './components/HelpSection';
 import type { ProcessedPoem, GlobalStats, AISettings, UserJudgment } from './types';
 import { analyzeImageryEmotion } from './services/aiService';
 import { calculateGlobalStats } from './utils/imageryExtractor';
@@ -260,9 +261,7 @@ function App() {
               <GraduationCap className="w-4 h-4" />
               天津大学汉语言文学专业诗词研究小组
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              网站负责人：彭思宇
-            </div>
+            
           </div>
         </div>
         <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
@@ -276,6 +275,8 @@ function App() {
             onAISettingsSave={handleAISettingsSave}
           />
         </div>
+        
+        <HelpSection />
         
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
