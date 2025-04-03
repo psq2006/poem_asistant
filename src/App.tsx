@@ -211,6 +211,10 @@ function App() {
                   <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
                   时间维度的分布分析
                 </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
+                  使用AI进行情感分析
+                </li>
               </ul>
               <p className="text-sm text-gray-500 italic">
                 支持 .docx 和 .txt 格式的文件上传（最大 10MB）
@@ -263,6 +267,7 @@ function App() {
       <footer className="bg-white mt-12 py-6 border-t">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-600 text-sm">
           <p>© 2024 天津大学汉语言文学专业诗词研究小组</p>
+          <p>联系开发人员:petertwo573@gmail.com</p>
           <p className="mt-1">本工具仅供学术研究使用</p>
         </div>
       </footer>

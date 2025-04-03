@@ -3,7 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import type { GlobalStats, ProcessedPoem } from '../types';
 import { CATEGORY_COLORS, IMAGERY_CATEGORIES } from '../utils/imageryCategories';
 import { Download } from 'lucide-react';
-import { exportToCSV } from '../utils/imageryExtractor';
+import { exportToCSV, exportMultipleTablesToExcel, getFormattedDateTime } from '../utils/exportUtils';
 
 interface VisualizationsProps {
   stats: GlobalStats;
@@ -342,26 +342,74 @@ export const Visualizations: React.FC<VisualizationsProps> = ({ stats, poems }) 
     };
   };
 
-  const handleExport = () => {
-    const csv = exportToCSV(poems, stats);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = '诗词意象分析.csv';
-    link.click();
+  // 添加导出功能
+  const handleExport = (format: 'csv' | 'excel') => {
+    if (format === 'csv') {
+      // 导出共现网络数据
+      const networkData = stats.coOccurrenceNetwork.nodes.map(node => ({
+        '意象': node.name,
+        '类别': node.category,
+        '出现次数': node.value
+      }));
+
+      const filename = `意象共现网络_${getFormattedDateTime()}`;
+      exportToCSV(networkData, filename);
+    } else {
+      // 导出多个表格到一个Excel文件
+      const tables = [
+        {
+          name: '意象共现网络',
+          data: stats.coOccurrenceNetwork.nodes.map(node => ({
+            '意象': node.name,
+            '类别': node.category,
+            '出现次数': node.value
+          }))
+        },
+        {
+          name: '意象时间分布',
+          data: stats.timeline.map(item => ({
+            '意象': item.imagery,
+            ...item.counts.reduce((acc, count, index) => ({
+              ...acc,
+              [`组${index + 1}`]: count
+            }), {})
+          }))
+        },
+        {
+          name: '意象类别分布',
+          data: stats.categoryAnalysis.map(item => ({
+            '意象': item.category,
+            '意象数量': Object.keys(item.imageryCount).length,
+            '总出现次数': Object.values(item.imageryCount).reduce((a, b) => a + b, 0)
+          }))
+        }
+      ];
+
+      const filename = `意象分析数据_${getFormattedDateTime()}`;
+      exportMultipleTablesToExcel(tables, filename);
+    }
   };
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">数据可视化</h2>
-        <button
-          onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
-        >
-          <Download size={20} />
-          导出分析数据
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Download size={20} />
+            导出CSV
+          </button>
+          <button
+            onClick={() => handleExport('excel')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+          >
+            <Download size={20} />
+            导出Excel
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

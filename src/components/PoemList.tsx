@@ -2,6 +2,7 @@ import React from 'react';
 import { ProcessedPoem, WordAssociation } from '../types';
 import { CATEGORY_COLORS } from '../utils/imageryCategories';
 import { getImageryCategory } from '../utils/imageryCategories';
+import { exportToCSV, exportToExcel, exportMultipleTablesToExcel, getFormattedDateTime } from '../utils/exportUtils';
 
 interface PoemListProps {
   poems: ProcessedPoem[];
@@ -137,14 +138,87 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
     return '';
   };
 
+  // 添加导出功能
+  const handleExportEmotionAnalysis = (poem: ProcessedPoem, format: 'csv' | 'excel') => {
+    if (!poem.emotionAnalysis) return;
+
+    const exportData = poem.emotionAnalysis.imageryEmotions.map(analysis => ({
+      '诗词标题': poem.title,
+      '意象': analysis.imagery,
+      '情感': analysis.emotion,
+      '倾向': analysis.tendency,
+      '强度': analysis.intensity,
+      '上下文': getImageryContext(poem, analysis.imagery)
+    }));
+
+    const filename = `情感分析_${poem.title}_${getFormattedDateTime()}`;
+    
+    if (format === 'csv') {
+      exportToCSV(exportData, filename);
+    } else {
+      exportToExcel(exportData, filename);
+    }
+  };
+
+  // 导出所有诗词的情感分析
+  const handleExportAllEmotionAnalysis = (format: 'csv' | 'excel') => {
+    const poemsWithEmotionAnalysis = poems.filter(poem => poem.emotionAnalysis);
+    
+    if (poemsWithEmotionAnalysis.length === 0) {
+      console.warn('没有可导出的情感分析数据');
+      return;
+    }
+
+    if (format === 'csv') {
+      // CSV格式不支持多表格，所以将所有数据合并到一个表格中
+      const allData = poemsWithEmotionAnalysis.flatMap(poem => 
+        poem.emotionAnalysis!.imageryEmotions.map(analysis => ({
+          '诗词标题': poem.title,
+          '意象': analysis.imagery,
+          '情感': analysis.emotion,
+          '倾向': analysis.tendency,
+          '强度': analysis.intensity,
+          '上下文': getImageryContext(poem, analysis.imagery)
+        }))
+      );
+
+      const filename = `所有诗词情感分析_${getFormattedDateTime()}`;
+      exportToCSV(allData, filename);
+    } else {
+      // 导出所有诗词的情感分析到一个Excel文件，每首诗一个工作表
+      const tables = poemsWithEmotionAnalysis.map(poem => ({
+        name: poem.title,
+        data: poem.emotionAnalysis!.imageryEmotions.map(analysis => ({
+          '诗词标题': poem.title,
+          '意象': analysis.imagery,
+          '情感': analysis.emotion,
+          '倾向': analysis.tendency,
+          '强度': analysis.intensity,
+          '上下文': getImageryContext(poem, analysis.imagery)
+        }))
+      }));
+
+      const filename = `所有诗词情感分析_${getFormattedDateTime()}`;
+      exportMultipleTablesToExcel(tables, filename);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-12">
-      <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-2">
-        <span>分析结果</span>
-        <span className="text-sm font-normal text-gray-500">
-          共 {poems.length} 首诗
-        </span>
-      </h2>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <span>分析结果</span>
+          <span className="text-sm font-normal text-gray-500">
+            共 {poems.length} 首诗
+          </span>
+        </h2>
+        <button
+          onClick={() => handleExportAllEmotionAnalysis('excel')}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+        >
+          导出所有诗词情感分析
+        </button>
+      </div>
       <div className="space-y-8">
         {poems.map((poem, index) => (
           <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-200 hover:shadow-xl">
@@ -183,7 +257,23 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
 
               {poem.emotionAnalysis && (
                 <div className="mt-6 border-t pt-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">意象情感分析</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">意象情感分析</h3>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleExportEmotionAnalysis(poem, 'csv')}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        导出CSV
+                      </button>
+                      <button
+                        onClick={() => handleExportEmotionAnalysis(poem, 'excel')}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        导出Excel
+                      </button>
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     {poem.emotionAnalysis.imageryEmotions.map((analysis, index) => {
                       const context = getImageryContext(poem, analysis.imagery);

@@ -253,7 +253,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         <ul className="list-disc pl-5 space-y-1">
           <li>支持 .docx 和 .txt 格式的文件</li>
           <li>文件大小不超过 10MB</li>
-          <li>诗词格式应为：每首诗以"编号.标题"开头，如"1.1登鹳雀楼"</li>
+          <li>诗词格式应为：每首诗以"编号.标题"开头，如"1.登鹳雀楼"</li>
           <li>诗词内容应位于标题下方，与标题之间用换行分隔</li>
           <li>各首诗词之间也应用编号标题分隔</li>
         </ul>

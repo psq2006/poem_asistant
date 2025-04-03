@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProcessedPoem } from '../types';
 import { extractWordRelationships, NATURAL_IMAGERY, COMMON_WORDS } from '../utils/imageryExtractor';
+import { exportToCSV, exportToExcel, exportMultipleTablesToExcel, getFormattedDateTime } from '../utils/exportUtils';
 
 interface ImageryWordVisualizationsProps {
   poems: ProcessedPoem[];
@@ -98,6 +99,50 @@ export const ImageryWordVisualizations: React.FC<ImageryWordVisualizationsProps>
     return selectedImageryData?.associations.slice(0, MAX_ASSOCIATIONS) || [];
   }, [selectedImageryData]);
 
+  // 添加导出功能
+  const handleExport = (format: 'csv' | 'excel') => {
+    if (!selectedImageryData) return;
+
+    const exportData = selectedImageryData.associations.map(({ word, count }) => ({
+      '意象': selectedImagery,
+      '关联词': word,
+      '共现次数': count
+    }));
+
+    const filename = `意象关联分析_${selectedImagery}_${getFormattedDateTime()}`;
+    
+    if (format === 'csv') {
+      exportToCSV(exportData, filename);
+    } else {
+      exportToExcel(exportData, filename);
+    }
+  };
+
+  // 导出所有意象关联表
+  const handleExportAll = (format: 'csv' | 'excel') => {
+    if (format === 'csv') {
+      // CSV格式不支持多表格，所以只导出当前选中的意象
+      if (selectedImageryData) {
+        handleExport('csv');
+      } else {
+        console.warn('请先选择一个意象再导出CSV');
+      }
+    } else {
+      // 导出所有意象关联表到一个Excel文件
+      const tables = tableData.map(item => ({
+        name: item.imagery,
+        data: item.associations.map(({ word, count }) => ({
+          '意象': item.imagery,
+          '关联词': word,
+          '共现次数': count
+        }))
+      }));
+
+      const filename = `所有意象关联分析_${getFormattedDateTime()}`;
+      exportMultipleTablesToExcel(tables, filename);
+    }
+  };
+
   if (tableData.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -110,7 +155,15 @@ export const ImageryWordVisualizations: React.FC<ImageryWordVisualizationsProps>
     <div className="space-y-8">
       {/* 意象选择器 */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">选择意象查看关联词</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900">选择意象查看关联词</h2>
+          <button
+            onClick={() => handleExportAll('excel')}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            导出所有意象关联表
+          </button>
+        </div>
         <div className="flex flex-wrap gap-4">
           {visibleImageries.map((imagery) => (
             <button
@@ -139,14 +192,30 @@ export const ImageryWordVisualizations: React.FC<ImageryWordVisualizationsProps>
       {/* 关联词表格 */}
       {selectedImagery && selectedImageryData && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            {selectedImagery} 的关联词统计
-            {selectedImageryData.associations.length > MAX_ASSOCIATIONS && (
-              <span className="text-sm text-gray-500 ml-2">
-                （显示前{MAX_ASSOCIATIONS}个最常用关联词）
-              </span>
-            )}
-          </h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">
+              {selectedImagery} 的关联词统计
+              {selectedImageryData.associations.length > MAX_ASSOCIATIONS && (
+                <span className="text-sm text-gray-500 ml-2">
+                  （显示前{MAX_ASSOCIATIONS}个最常用关联词）
+                </span>
+              )}
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExport('csv')}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                导出CSV
+              </button>
+              <button
+                onClick={() => handleExport('excel')}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                导出Excel
+              </button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
