@@ -279,19 +279,32 @@ ${imagery.join('、')}
         } catch (parseError) {
           console.error('JSON解析错误:', parseError);
           // 如果直接解析失败，尝试提取JSON部分
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
           if (jsonMatch) {
             try {
-              result = JSON.parse(jsonMatch[0]);
+              result = JSON.parse(jsonMatch[1]);
               console.log('提取并解析后的JSON结果:', result);
             } catch (e) {
               console.error('提取的JSON解析错误:', e);
-              console.error('DeepSeek返回的原始内容:', content);
+              console.error('AI返回的原始内容:', content);
               throw new Error('无法解析AI返回的JSON数据');
             }
           } else {
-            console.error('DeepSeek返回的原始内容:', content);
-            throw new Error('AI返回的数据中未找到有效的JSON格式');
+            // 如果没有找到代码块，尝试直接提取JSON对象
+            const jsonObjectMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonObjectMatch) {
+              try {
+                result = JSON.parse(jsonObjectMatch[0]);
+                console.log('提取并解析后的JSON结果:', result);
+              } catch (e) {
+                console.error('提取的JSON对象解析错误:', e);
+                console.error('AI返回的原始内容:', content);
+                throw new Error('无法解析AI返回的JSON数据');
+              }
+            } else {
+              console.error('AI返回的原始内容:', content);
+              throw new Error('AI返回的数据中未找到有效的JSON格式');
+            }
           }
         }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ProcessedPoem } from '../types';
 import { extractWordRelationships, NATURAL_IMAGERY, COMMON_WORDS } from '../utils/imageryExtractor';
-import { exportToCSV, exportToExcel, exportMultipleTablesToExcel, getFormattedDateTime } from '../utils/exportUtils';
+import { exportToCSV, getFormattedDateTime } from '../utils/exportUtils';
 
 interface ImageryWordVisualizationsProps {
   poems: ProcessedPoem[];
@@ -114,7 +114,7 @@ export const ImageryWordVisualizations: React.FC<ImageryWordVisualizationsProps>
     if (format === 'csv') {
       exportToCSV(exportData, filename);
     } else {
-      exportToExcel(exportData, filename);
+      console.warn('导出Excel功能未实现');
     }
   };
 
@@ -128,18 +128,7 @@ export const ImageryWordVisualizations: React.FC<ImageryWordVisualizationsProps>
         console.warn('请先选择一个意象再导出CSV');
       }
     } else {
-      // 导出所有意象关联表到一个Excel文件
-      const tables = tableData.map(item => ({
-        name: item.imagery,
-        data: item.associations.map(({ word, count }) => ({
-          '意象': item.imagery,
-          '关联词': word,
-          '共现次数': count
-        }))
-      }));
-
-      const filename = `所有意象关联分析_${getFormattedDateTime()}`;
-      exportMultipleTablesToExcel(tables, filename);
+      console.warn('导出所有意象关联表功能未实现');
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { Upload, FileType, AlertCircle, Brain, Save } from 'lucide-react';
+import { Upload, FileType, AlertCircle, Brain, Save, CheckCircle } from 'lucide-react';
 import mammoth from 'mammoth';
 import { parsePoems } from '../utils/imageryExtractor';
 import type { ProcessedPoem, AISettings } from '../types';
@@ -24,10 +24,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [useAI, setUseAI] = useState(savedAISettings?.useAI || false);
+  const [enableJudgment, setEnableJudgment] = useState(savedAISettings?.enableJudgment || false);
   const [aiSettings, setAISettings] = useState<AISettings>(savedAISettings || {
     model: 'gpt-3.5-turbo',
     apiKey: '',
-    useAI: false
+    useAI: false,
+    enableJudgment: false
   });
   const [isAISettingsSaved, setIsAISettingsSaved] = useState(!!savedAISettings);
 
@@ -35,6 +37,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   useEffect(() => {
     if (savedAISettings) {
       setUseAI(savedAISettings.useAI);
+      setEnableJudgment(savedAISettings.enableJudgment || false);
       setAISettings(savedAISettings);
       setIsAISettingsSaved(true);
     }
@@ -54,7 +57,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const handleAISettingsSave = () => {
     const settings = {
       ...aiSettings,
-      useAI: useAI // 确保保存时包含当前的useAI状态
+      useAI: useAI, // 确保保存时包含当前的useAI状态
+      enableJudgment: enableJudgment // 确保保存时包含当前的enableJudgment状态
     };
     onAISettingsSave(settings);
     setIsAISettingsSaved(true);
@@ -109,7 +113,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       // 确保传递正确的AI设置
       const settings = useAI ? {
         ...aiSettings,
-        useAI: true
+        useAI: true,
+        enableJudgment: enableJudgment
       } : undefined;
 
       onPoemsProcessed(processedPoems, settings);
@@ -121,7 +126,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [onPoemsProcessed, useAI, aiSettings]);
+  }, [onPoemsProcessed, useAI, enableJudgment, aiSettings]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -166,6 +171,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 使用AI进行情感分析
               </label>
             </div>
+
+            {useAI && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="enableJudgment"
+                  checked={enableJudgment}
+                  onChange={(e) => setEnableJudgment(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="enableJudgment" className="flex items-center gap-2 text-gray-700">
+                  <CheckCircle className="w-5 h-5" />
+                  启用AI分析结果人工判断
+                </label>
+              </div>
+            )}
 
             {useAI && !isAISettingsSaved && (
               <div className="space-y-4 p-4 bg-gray-50 rounded-lg">

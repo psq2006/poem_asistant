@@ -98,6 +98,7 @@ export interface AISettings {
   model: string;
   apiKey: string;
   useAI: boolean;
+  enableJudgment?: boolean;
 }
 
 export interface EmotionAnalysis {
@@ -106,6 +107,7 @@ export interface EmotionAnalysis {
     emotion: string;
     tendency: '积极' | '消极' | '中性';
     intensity: number;
+    isTrue?: boolean;
   }>;
 }
 
@@ -128,4 +130,16 @@ export interface ImageryWordPair {
     poemId: string;
     sentence: string;
   }>;
+}
+
+export interface UserJudgment {
+  poemId: string;
+  imageryEmotionId: string;
+  isTrue: boolean;
+  timestamp: number;
+}
+
+export interface JudgmentSettings {
+  enableJudgment: boolean;
+  judgments: UserJudgment[];
 }

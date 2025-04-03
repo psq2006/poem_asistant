@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ProcessedPoem } from '../types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
-import { exportToCSV, exportToExcel, getFormattedDateTime } from '../utils/exportUtils';
+import { exportToCSV, getFormattedDateTime } from '../utils/exportUtils';
 
 interface EmotionVisualizationProps {
   poems: ProcessedPoem[];
@@ -107,7 +107,7 @@ export const EmotionVisualization: React.FC<EmotionVisualizationProps> = ({ poem
     if (format === 'csv') {
       exportToCSV(exportData, filename);
     } else {
-      exportToExcel(exportData, filename);
+      console.warn('导出Excel功能未实现');
     }
   };
 

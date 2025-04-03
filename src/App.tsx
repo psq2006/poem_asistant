@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { Visualizations } from './components/Visualizations';
 import { PoemList } from './components/PoemList';
 import { EmotionVisualization } from './components/EmotionVisualization';
 import { ImageryWordVisualizations } from './components/ImageryWordVisualizations';
-import type { ProcessedPoem, GlobalStats, AISettings } from './types';
+import type { ProcessedPoem, GlobalStats, AISettings, UserJudgment } from './types';
 import { analyzeImageryEmotion } from './services/aiService';
 import { calculateGlobalStats } from './utils/imageryExtractor';
-import { GraduationCap, AlertTriangle } from 'lucide-react';
+import { GraduationCap, AlertTriangle, Save, Trash2 } from 'lucide-react';
 
 function App() {
   const [poems, setPoems] = useState<ProcessedPoem[]>([]);
@@ -17,29 +17,150 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [savedAISettings, setSavedAISettings] = useState<AISettings | null>(null);
   const [analyzedPoems, setAnalyzedPoems] = useState<ProcessedPoem[]>([]);
+  const [userJudgments, setUserJudgments] = useState<UserJudgment[]>([]);
+  const [enableJudgment, setEnableJudgment] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // 从localStorage加载保存的AI设置
+  // 从localStorage加载所有保存的数据
   useEffect(() => {
-    const savedSettings = localStorage.getItem('aiSettings');
-    if (savedSettings) {
-      try {
+    try {
+      // 加载诗词数据
+      const savedPoems = localStorage.getItem('poems');
+      if (savedPoems) {
+        const parsedPoems = JSON.parse(savedPoems);
+        setPoems(parsedPoems);
+        setStats(calculateGlobalStats(parsedPoems));
+      }
+
+      // 加载已分析的诗词数据
+      const savedAnalyzedPoems = localStorage.getItem('analyzedPoems');
+      if (savedAnalyzedPoems) {
+        setAnalyzedPoems(JSON.parse(savedAnalyzedPoems));
+      }
+
+      // 加载AI设置
+      const savedSettings = localStorage.getItem('aiSettings');
+      if (savedSettings) {
         const parsedSettings = JSON.parse(savedSettings);
         setSavedAISettings(parsedSettings);
-      } catch {
-        console.error('加载保存的AI设置失败');
-        setError('加载AI设置失败，请检查浏览器存储权限');
+        setEnableJudgment(parsedSettings.enableJudgment || false);
       }
+
+      // 加载用户判断结果
+      const savedJudgments = localStorage.getItem('userJudgments');
+      if (savedJudgments) {
+        const parsedJudgments = JSON.parse(savedJudgments);
+        setUserJudgments(parsedJudgments);
+        if (parsedJudgments.length > 0) {
+          setEnableJudgment(true);
+        }
+      }
+    } catch (err) {
+      console.error('加载保存的数据失败:', err);
+      setError('加载保存的数据失败，请检查浏览器存储权限');
     }
   }, []);
 
+  // 保存所有数据到localStorage
+  const saveAllData = useCallback(() => {
+    try {
+      localStorage.setItem('poems', JSON.stringify(poems));
+      localStorage.setItem('analyzedPoems', JSON.stringify(analyzedPoems));
+      localStorage.setItem('userJudgments', JSON.stringify(userJudgments));
+      if (savedAISettings) {
+        localStorage.setItem('aiSettings', JSON.stringify(savedAISettings));
+      }
+      setHasUnsavedChanges(false);
+      setError(null);
+    } catch (err) {
+      console.error('保存数据失败:', err);
+      setError('保存数据失败，请检查浏览器存储权限');
+    }
+  }, [poems, analyzedPoems, userJudgments, savedAISettings]);
+
+  // 清除所有本地缓存
+  const clearLocalStorage = useCallback(() => {
+    try {
+      localStorage.removeItem('poems');
+      localStorage.removeItem('analyzedPoems');
+      localStorage.removeItem('userJudgments');
+      localStorage.removeItem('aiSettings');
+      setPoems([]);
+      setAnalyzedPoems([]);
+      setUserJudgments([]);
+      setStats(null);
+      setHasUnsavedChanges(false);
+      setError(null);
+    } catch (err) {
+      console.error('清除缓存失败:', err);
+      setError('清除缓存失败，请检查浏览器存储权限');
+    }
+  }, []);
+
+  // 保存AI设置
   const handleAISettingsSave = (settings: AISettings) => {
     try {
-      localStorage.setItem('aiSettings', JSON.stringify(settings));
       setSavedAISettings(settings);
+      setEnableJudgment(settings.enableJudgment || false);
+      setHasUnsavedChanges(true);
       setError(null);
     } catch {
       setError('保存AI设置失败，请检查浏览器存储权限');
     }
+  };
+
+  // 计算AI判断的正确率
+  const calculateAccuracy = () => {
+    if (!userJudgments || userJudgments.length === 0) return 0;
+    const trueCount = userJudgments.filter(j => j.isTrue).length;
+    return (trueCount / userJudgments.length) * 100;
+  };
+
+  // 处理用户判断结果
+  const handleUserJudgment = (poemId: string, imageryEmotionId: string, isTrue: boolean) => {
+    const newJudgment: UserJudgment = {
+      poemId,
+      imageryEmotionId,
+      isTrue,
+      timestamp: Date.now()
+    };
+
+    const updatedJudgments = [...userJudgments];
+    const existingIndex = updatedJudgments.findIndex(
+      j => j.poemId === poemId && j.imageryEmotionId === imageryEmotionId
+    );
+
+    if (existingIndex >= 0) {
+      updatedJudgments[existingIndex] = newJudgment;
+    } else {
+      updatedJudgments.push(newJudgment);
+    }
+
+    setUserJudgments(updatedJudgments);
+    setHasUnsavedChanges(true);
+
+    const updatedPoems = analyzedPoems.map(poem => {
+      if (poem.id === poemId && poem.emotionAnalysis) {
+        const updatedImageryEmotions = poem.emotionAnalysis.imageryEmotions.map(emotion => {
+          const emotionId = `${poem.id}-${emotion.imagery}-${emotion.emotion}`;
+          if (emotionId === imageryEmotionId) {
+            return { ...emotion, isTrue };
+          }
+          return emotion;
+        });
+
+        return {
+          ...poem,
+          emotionAnalysis: {
+            ...poem.emotionAnalysis,
+            imageryEmotions: updatedImageryEmotions
+          }
+        };
+      }
+      return poem;
+    });
+
+    setAnalyzedPoems(updatedPoems);
   };
 
   const handlePoemsProcessed = async (processedPoems: ProcessedPoem[], aiSettings?: AISettings) => {
@@ -48,7 +169,6 @@ function App() {
       console.log('AI设置:', aiSettings);
       console.log('诗词数量:', processedPoems.length);
 
-      // 参数验证
       if (!processedPoems || processedPoems.length === 0) {
         throw new Error('未提供有效的诗词数据');
       }
@@ -61,30 +181,22 @@ function App() {
       setStats(calculateGlobalStats(processedPoems));
       setAnalyzedPoems([]);
       setError(null);
+      setEnableJudgment(aiSettings?.enableJudgment || false);
+      setHasUnsavedChanges(true);
 
-      // 如果提供了AI设置，进行情感分析
       if (aiSettings?.useAI && aiSettings?.apiKey) {
-        console.log('=== 开始AI分析 ===');
-        console.log('使用的模型:', aiSettings.model);
-        console.log('API密钥长度:', aiSettings.apiKey.length);
-        
         setIsAnalyzing(true);
-        setError(null);
+        setAnalysisProgress(0);
 
         const totalPoems = processedPoems.length;
         let analyzedCount = 0;
         const failedPoems: string[] = [];
 
-        // 在开始分析前清空之前的分析结果
-        setAnalyzedPoems([]);
-
-        const analyzedPoems = await Promise.all(
+        const analyzedResults = await Promise.all(
           processedPoems.map(async (poem) => {
             try {
-              console.log(`分析第 ${analyzedCount + 1}/${totalPoems} 首诗:`, poem.title);
               const imagery = poem.imagery.map(item => item.word);
               
-              // 检查意象列表是否为空
               if (imagery.length === 0) {
                 console.warn(`诗词 "${poem.title}" 没有找到意象词`);
                 return {
@@ -95,7 +207,6 @@ function App() {
                 };
               }
 
-              console.log('发送API请求...');
               const emotionAnalysis = await analyzeImageryEmotion(
                 poem,
                 imagery,
@@ -104,11 +215,7 @@ function App() {
               );
               
               analyzedCount++;
-              const progress = (analyzedCount / totalPoems) * 100;
-              console.log(`分析进度: ${progress.toFixed(1)}%`);
-              setAnalysisProgress(progress);
-              
-              console.log('分析完成:', poem.title, emotionAnalysis);
+              setAnalysisProgress((analyzedCount / totalPoems) * 100);
               
               return {
                 ...poem,
@@ -129,27 +236,17 @@ function App() {
           })
         );
 
-        console.log('=== AI分析完成 ===');
-        console.log('成功分析:', analyzedPoems.length - failedPoems.length);
-        console.log('失败数量:', failedPoems.length);
-        
         if (failedPoems.length > 0) {
-          const warningMessage = `以下诗词分析失败：${failedPoems.join('、')}`;
-          console.warn(warningMessage);
-          setError(warningMessage);
+          setError(`以下诗词分析失败：${failedPoems.join('、')}`);
         }
         
-        setAnalyzedPoems(analyzedPoems);
-      } else {
-        console.log('未启用AI分析，跳过情感分析步骤');
-        setAnalyzedPoems(processedPoems);
+        setAnalyzedPoems(analyzedResults);
+        setIsAnalyzing(false);
       }
-    } catch (error) {
-      console.error('处理过程发生错误:', error);
-      setError(error instanceof Error ? error.message : '处理过程中发生未知错误');
-    } finally {
+    } catch (err) {
+      console.error('处理诗词数据失败:', err);
+      setError('处理诗词数据失败，请重试');
       setIsAnalyzing(false);
-      setAnalysisProgress(0);
     }
   };
 
@@ -251,15 +348,50 @@ function App() {
 
         {poems.length > 0 && !isAnalyzing && (
           <>
+            <div className="flex justify-end gap-4 mb-6">
+              {hasUnsavedChanges && (
+                <button
+                  onClick={saveAllData}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  保存分析结果
+                </button>
+              )}
+              <button
+                onClick={clearLocalStorage}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                清除本地缓存
+              </button>
+            </div>
+
             {stats && <Visualizations poems={poems} stats={stats} />}
             <ImageryWordVisualizations poems={poems} />
             {analyzedPoems.length > 0 && (
               <div className="mt-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">AI情感分析结果</h2>
+                {enableJudgment && userJudgments.length > 0 && (
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-blue-800 font-medium">AI分析正确率：</span>
+                        <span className="text-blue-600 font-bold">{calculateAccuracy().toFixed(1)}%</span>
+                        <span className="text-blue-600 text-sm">({userJudgments.filter(j => j.isTrue).length}/{userJudgments.length})</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <EmotionVisualization poems={analyzedPoems} />
               </div>
             )}
-            <PoemList poems={analyzedPoems.length > 0 ? analyzedPoems : poems} />
+            <PoemList 
+              poems={analyzedPoems.length > 0 ? analyzedPoems : poems} 
+              enableJudgment={enableJudgment}
+              userJudgments={userJudgments}
+              onUserJudgment={handleUserJudgment}
+            />
           </>
         )}
       </main>

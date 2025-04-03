@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx';
-
 /**
  * 导出数据为CSV文件
  * @param data 要导出的数据数组
@@ -45,54 +43,17 @@ export const exportToCSV = <T extends Record<string, unknown>>(data: T[], filena
 };
 
 /**
- * 导出数据为Excel文件
- * @param data 要导出的数据数组
- * @param filename 文件名
- */
-export const exportToExcel = <T extends Record<string, unknown>>(data: T[], filename: string) => {
-  if (data.length === 0) {
-    console.warn('没有数据可导出');
-    return;
-  }
-
-  // 创建工作表数据
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  
-  // 创建工作簿
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-  
-  // 导出文件
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
-};
-
-/**
  * 导出多个表格到一个Excel文件
- * @param tables 表格数据数组，每个元素包含表格名称和数据
+ * @param tables 要导出的表格数组
  * @param filename 文件名
  */
-export const exportMultipleTablesToExcel = <T extends Record<string, unknown>>(
-  tables: Array<{ name: string; data: T[] }>,
-  filename: string
-) => {
-  if (tables.length === 0) {
-    console.warn('没有数据可导出');
-    return;
-  }
-
-  // 创建工作簿
-  const workbook = XLSX.utils.book_new();
-  
-  // 为每个表格创建工作表
-  tables.forEach(({ name, data }) => {
-    if (data.length > 0) {
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      XLSX.utils.book_append_sheet(workbook, worksheet, name);
-    }
+export const exportMultipleTablesToExcel = <T extends Record<string, unknown>>(tables: { name: string; data: T[] }[], filename: string) => {
+  // 由于浏览器限制，我们只能导出CSV格式
+  // 这里我们将每个表格导出为单独的CSV文件
+  tables.forEach(table => {
+    const tableFilename = `${filename}_${table.name}`;
+    exportToCSV(table.data, tableFilename);
   });
-  
-  // 导出文件
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
 };
 
 /**

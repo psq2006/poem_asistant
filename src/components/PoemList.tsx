@@ -1,14 +1,23 @@
 import React from 'react';
-import { ProcessedPoem, WordAssociation } from '../types';
+import type { ProcessedPoem, UserJudgment, WordAssociation } from '../types';
 import { CATEGORY_COLORS } from '../utils/imageryCategories';
 import { getImageryCategory } from '../utils/imageryCategories';
-import { exportToCSV, exportToExcel, exportMultipleTablesToExcel, getFormattedDateTime } from '../utils/exportUtils';
+import { exportToCSV, getFormattedDateTime } from '../utils/exportUtils';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 interface PoemListProps {
   poems: ProcessedPoem[];
+  enableJudgment?: boolean;
+  userJudgments?: UserJudgment[];
+  onUserJudgment?: (poemId: string, imageryEmotionId: string, isTrue: boolean) => void;
 }
 
-export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
+export const PoemList: React.FC<PoemListProps> = ({ 
+  poems, 
+  enableJudgment = false,
+  userJudgments = [],
+  onUserJudgment
+}) => {
   // 高亮原诗中的意象
   const highlightImageriesInText = (text: string, imageries: Array<{word: string; count: number}>) => {
     // 按长度排序意象词，优先匹配较长的词（避免"江南"被拆分为"江"和"南"）
@@ -138,68 +147,68 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
     return '';
   };
 
-  // 添加导出功能
-  const handleExportEmotionAnalysis = (poem: ProcessedPoem, format: 'csv' | 'excel') => {
+  // 导出单首诗的意象-情感分析
+  const exportEmotionAnalysis = (poem: ProcessedPoem) => {
     if (!poem.emotionAnalysis) return;
-
-    const exportData = poem.emotionAnalysis.imageryEmotions.map(analysis => ({
-      '诗词标题': poem.title,
-      '意象': analysis.imagery,
-      '情感': analysis.emotion,
-      '倾向': analysis.tendency,
-      '强度': analysis.intensity,
-      '上下文': getImageryContext(poem, analysis.imagery)
-    }));
-
-    const filename = `情感分析_${poem.title}_${getFormattedDateTime()}`;
     
-    if (format === 'csv') {
-      exportToCSV(exportData, filename);
-    } else {
-      exportToExcel(exportData, filename);
-    }
+    const data = poem.emotionAnalysis.imageryEmotions.map(item => {
+      const judgment = userJudgments?.find(
+        j => j.poemId === poem.id && 
+        j.imageryEmotionId === `${poem.id}-${item.imagery}-${item.emotion}`
+      );
+      
+      return {
+        '诗词标题': poem.title,
+        '意象': item.imagery,
+        '情感': item.emotion,
+        '情感倾向': item.tendency,
+        '情感强度': item.intensity,
+        '人工判别': judgment ? (judgment.isTrue ? '正确' : '错误') : '未判别'
+      };
+    });
+    
+    const filename = `意象情感分析_${poem.title}_${getFormattedDateTime()}`;
+    exportToCSV(data, filename);
   };
 
-  // 导出所有诗词的情感分析
-  const handleExportAllEmotionAnalysis = (format: 'csv' | 'excel') => {
-    const poemsWithEmotionAnalysis = poems.filter(poem => poem.emotionAnalysis);
+  // 导出所有诗的意象-情感分析
+  const exportAllEmotionAnalysis = () => {
+    const data = poems.flatMap(poem => {
+      if (!poem.emotionAnalysis) return [];
+      
+      return poem.emotionAnalysis.imageryEmotions.map(item => {
+        const judgment = userJudgments?.find(
+          j => j.poemId === poem.id && 
+          j.imageryEmotionId === `${poem.id}-${item.imagery}-${item.emotion}`
+        );
+        
+        return {
+          '诗词标题': poem.title,
+          '意象': item.imagery,
+          '情感': item.emotion,
+          '情感倾向': item.tendency,
+          '情感强度': item.intensity,
+          '人工判别': judgment ? (judgment.isTrue ? '正确' : '错误') : '未判别'
+        };
+      });
+    });
     
-    if (poemsWithEmotionAnalysis.length === 0) {
-      console.warn('没有可导出的情感分析数据');
-      return;
-    }
+    const filename = `意象情感分析_全部诗词_${getFormattedDateTime()}`;
+    exportToCSV(data, filename);
+  };
 
-    if (format === 'csv') {
-      // CSV格式不支持多表格，所以将所有数据合并到一个表格中
-      const allData = poemsWithEmotionAnalysis.flatMap(poem => 
-        poem.emotionAnalysis!.imageryEmotions.map(analysis => ({
-          '诗词标题': poem.title,
-          '意象': analysis.imagery,
-          '情感': analysis.emotion,
-          '倾向': analysis.tendency,
-          '强度': analysis.intensity,
-          '上下文': getImageryContext(poem, analysis.imagery)
-        }))
-      );
+  // 获取意象-情感对的判断结果
+  const getJudgmentResult = (poemId: string, imagery: string, emotion: string) => {
+    const imageryEmotionId = `${poemId}-${imagery}-${emotion}`;
+    const judgment = userJudgments.find(j => j.poemId === poemId && j.imageryEmotionId === imageryEmotionId);
+    return judgment?.isTrue;
+  };
 
-      const filename = `所有诗词情感分析_${getFormattedDateTime()}`;
-      exportToCSV(allData, filename);
-    } else {
-      // 导出所有诗词的情感分析到一个Excel文件，每首诗一个工作表
-      const tables = poemsWithEmotionAnalysis.map(poem => ({
-        name: poem.title,
-        data: poem.emotionAnalysis!.imageryEmotions.map(analysis => ({
-          '诗词标题': poem.title,
-          '意象': analysis.imagery,
-          '情感': analysis.emotion,
-          '倾向': analysis.tendency,
-          '强度': analysis.intensity,
-          '上下文': getImageryContext(poem, analysis.imagery)
-        }))
-      }));
-
-      const filename = `所有诗词情感分析_${getFormattedDateTime()}`;
-      exportMultipleTablesToExcel(tables, filename);
+  // 处理用户判断
+  const handleJudgment = (poemId: string, imagery: string, emotion: string, isTrue: boolean) => {
+    if (onUserJudgment) {
+      const imageryEmotionId = `${poemId}-${imagery}-${emotion}`;
+      onUserJudgment(poemId, imageryEmotionId, isTrue);
     }
   };
 
@@ -213,7 +222,7 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
           </span>
         </h2>
         <button
-          onClick={() => handleExportAllEmotionAnalysis('excel')}
+          onClick={exportAllEmotionAnalysis}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
         >
           导出所有诗词情感分析
@@ -261,24 +270,21 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
                     <h3 className="text-lg font-semibold text-gray-800">意象情感分析</h3>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleExportEmotionAnalysis(poem, 'csv')}
+                        onClick={() => exportEmotionAnalysis(poem)}
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                       >
                         导出CSV
-                      </button>
-                      <button
-                        onClick={() => handleExportEmotionAnalysis(poem, 'excel')}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                      >
-                        导出Excel
                       </button>
                     </div>
                   </div>
                   <div className="space-y-4">
                     {poem.emotionAnalysis.imageryEmotions.map((analysis, index) => {
                       const context = getImageryContext(poem, analysis.imagery);
+                      const isTrue = getJudgmentResult(poem.id, analysis.imagery, analysis.emotion);
+                      const opacity = isTrue !== undefined ? 'opacity-60' : '';
+                      
                       return (
-                        <div key={index} className="bg-gray-50 rounded-lg p-4">
+                        <div key={index} className={`bg-gray-50 rounded-lg p-4 ${opacity}`}>
                           <div className="flex items-start gap-4">
                             <div className="flex-1">
                               <div className="text-gray-700 mb-2">
@@ -297,6 +303,24 @@ export const PoemList: React.FC<PoemListProps> = ({ poems }) => {
                                 </span>
                               </div>
                             </div>
+                            {enableJudgment && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleJudgment(poem.id, analysis.imagery, analysis.emotion, true)}
+                                  className={`p-1 rounded-full ${isTrue === true ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:bg-gray-100'}`}
+                                  title="判断为正确"
+                                >
+                                  <CheckCircle className="w-5 h-5" />
+                                </button>
+                                <button
+                                  onClick={() => handleJudgment(poem.id, analysis.imagery, analysis.emotion, false)}
+                                  className={`p-1 rounded-full ${isTrue === false ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:bg-gray-100'}`}
+                                  title="判断为错误"
+                                >
+                                  <XCircle className="w-5 h-5" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
