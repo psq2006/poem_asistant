@@ -96,4 +96,4 @@ https://sweet-palmier-4c55b2.netlify.app/
 ## 联系方式
 - 项目团队：天津大学汉语言文学专业诗词意象分析团队
 - 联系邮箱：pengsquare82@gmail.com
-- 项目链接：[https://github.com/your-username/poem-analysis]
+- 项目链接：[https://github.com/psq2006/poem-analysis]
