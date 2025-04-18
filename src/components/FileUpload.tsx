@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Upload, FileType, AlertCircle, Brain, Save, CheckCircle } from 'lucide-react';
 import mammoth from 'mammoth';
 import { parsePoems } from '../utils/imageryExtractor';
@@ -23,6 +23,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [useAI, setUseAI] = useState(savedAISettings?.useAI || false);
   const [enableJudgment, setEnableJudgment] = useState(savedAISettings?.enableJudgment || false);
   const [aiSettings, setAISettings] = useState<AISettings>(savedAISettings || {
@@ -63,6 +65,88 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     onAISettingsSave(settings);
     setIsAISettingsSaved(true);
   };
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    
+    setError(null);
+    setIsProcessing(true);
+
+    try {
+      // 检查文件大小
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`文件大小超过限制（最大 ${MAX_FILE_SIZE / 1024 / 1024}MB）`);
+      }
+
+      // 检查文件格式
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      if (!SUPPORTED_FORMATS.includes(fileExtension)) {
+        throw new Error(`不支持的文件格式，请上传 ${SUPPORTED_FORMATS.join(', ')} 格式的文件`);
+      }
+
+      let text = '';
+      
+      if (fileExtension === '.docx') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      } else if (fileExtension === '.txt') {
+        text = await file.text();
+      }
+
+      // 检查文本是否为空
+      if (!text.trim()) {
+        throw new Error('文件内容为空或格式不正确');
+      }
+
+      const poems = parsePoems(text);
+      
+      // 检查是否成功解析到诗词
+      if (poems.length === 0) {
+        throw new Error('未能从文件中解析出诗词，请检查文件格式是否正确');
+      }
+
+      const processedPoems = poems.map(poem => ({
+        ...poem,
+        id: `poem-${Math.random().toString(36).substr(2, 9)}`
+      }));
+
+      // 确保传递正确的AI设置
+      const settings = useAI ? {
+        ...aiSettings,
+        useAI: true,
+        enableJudgment: enableJudgment
+      } : undefined;
+
+      onPoemsProcessed(processedPoems, settings);
+    } catch (error: Error | unknown) {
+      console.error('Error processing file:', error);
+      setError(error instanceof Error ? error.message : '处理文件时发生错误');
+    }
+    setIsProcessing(false);
+  }, [onPoemsProcessed, useAI, enableJudgment, aiSettings]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -122,17 +206,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       console.error('Error processing file:', error);
       setError(error instanceof Error ? error.message : '处理文件时发生错误');
       // 重置文件输入
-      event.target.value = '';
-    } finally {
-      setIsProcessing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+    setIsProcessing(false);
   }, [onPoemsProcessed, useAI, enableJudgment, aiSettings]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="p-8">
-          <label className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed ${error ? 'border-red-300 bg-red-50' : 'border-blue-300 bg-blue-50'} rounded-lg cursor-pointer hover:bg-blue-100 transition-colors duration-200 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div 
+            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed ${
+              error ? 'border-red-300 bg-red-50' : 
+              isDragging ? 'border-blue-500 bg-blue-100' : 
+              'border-blue-300 bg-blue-50'
+            } rounded-lg cursor-pointer hover:bg-blue-100 transition-colors duration-200 ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            aria-label="文件上传区域"
+          >
             <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
               {isProcessing ? (
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -149,13 +248,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               </div>
             </div>
             <input
+              ref={fileInputRef}
               type="file"
               className="hidden"
               accept=".docx,.txt"
               onChange={handleFileUpload}
               disabled={isProcessing}
+              aria-label="选择文件"
+              title="选择文件"
             />
-          </label>
+          </div>
 
           <div className="mt-6 space-y-4">
             <div className="flex items-center gap-2">
