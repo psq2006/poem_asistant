@@ -75,7 +75,7 @@ export const HelpSection: React.FC = () => {
                 三、开源提醒
               </h3>
               <div className="bg-gray-50 p-4 rounded-md text-sm text-gray-700">
-                <p>相关代码已经开源在 <a href="https://github.com/psq2006/poem_asistant" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">https://github.com/psq2006/poem_asistant</a></p>
+                <p>项目代码已<a href="https://github.com/psq2006/poem_asistant" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">开源</a></p>
               </div>
             </div>
           </div>

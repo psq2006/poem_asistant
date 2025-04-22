@@ -399,8 +399,8 @@ function App() {
 
       <footer className="bg-white mt-12 py-6 border-t">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-600 text-sm">
-          <p>© 2024 天津大学汉语言文学专业诗词研究小组</p>
-          <p>联系开发人员:petertwo573@gmail.com</p>
+          <p>© 2025 天津大学汉语言文学专业诗词研究小组</p>
+          <p>联系我们:pengsiyu@tju.edu.cn</p>
           <p className="mt-1">本工具仅供学术研究使用</p>
         </div>
       </footer>
