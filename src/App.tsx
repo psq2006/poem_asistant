@@ -276,8 +276,6 @@ function App() {
           />
         </div>
         
-        <HelpSection />
-        
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
             <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
@@ -396,6 +394,8 @@ function App() {
           </>
         )}
       </main>
+
+      <HelpSection />
 
       <footer className="bg-white mt-12 py-6 border-t">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-600 text-sm">
