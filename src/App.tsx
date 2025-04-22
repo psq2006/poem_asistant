@@ -259,7 +259,7 @@ function App() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">诗词意象分析工具</h1>
             <div className="text-sm text-gray-600 flex items-center gap-2">
               <GraduationCap className="w-4 h-4" />
-              天津大学汉语言文学专业诗词研究小组
+              天津大学全唐诗自然意象与情感链接模式及人工智能"情感"学习探究项目
             </div>
             
           </div>
@@ -293,7 +293,7 @@ function App() {
             <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
               <h2 className="text-2xl font-semibold text-gray-800 mb-4">欢迎使用诗词意象分析工具</h2>
               <p className="text-gray-600 mb-6">
-                本工具由天津大学汉语言文学专业诗词研究小组开发，旨在帮助研究人员快速分析诗词中的自然意象分布及其关联关系。
+                本工具由天津大学人文艺术学院全唐诗自然意象与情感研究团队开发，旨在帮助研究人员快速分析诗词中的自然意象分布及其关联关系。
                 通过上传包含诗词的文档，您可以获得：
               </p>
               <ul className="text-left text-gray-600 space-y-2 mb-6">
@@ -399,7 +399,7 @@ function App() {
 
       <footer className="bg-white mt-12 py-6 border-t">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-600 text-sm">
-          <p>© 2025 天津大学汉语言文学专业诗词研究小组</p>
+          <p>© 2025 天津大学人文艺术学院全唐诗自然意象与情感研究团队 彭思宇 陈心妍 周俞彤</p>
           <p>联系我们:pengsiyu@tju.edu.cn</p>
           <p className="mt-1">本工具仅供学术研究使用</p>
         </div>
